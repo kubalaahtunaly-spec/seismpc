@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Сейсмограф воды — Интерактивный сценарий</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            font-family: sans-serif;
+            color: #fff;
+            overflow-x: hidden;
+        }
+
+        /* КОНТЕЙНЕР ДЛЯ ФОНОВ */
+        .bg-layer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -2;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            opacity: 0;
+            transition: opacity 1.5s ease-in-out;
+        }
+
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 850px;
+            z-index: 1;
+            padding: 15vh 0 20vh 0;
+        }
+
+        /* УВЕДОМЛЕНИЯ */
+        #sync-notice {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border-left: 2px solid #fff;
+            padding: 8px 12px;
+            font-family: monospace;
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.8);
+            z-index: 3000;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+            pointer-events: none;
+            backdrop-filter: blur(3px);
+        }
+
+        #welcome-notice {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.95);
+            color: #000;
+            padding: 15px 25px;
+            font-family: monospace;
+            font-size: 11px;
+            z-index: 5000;
+            text-align: center;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            opacity: 0;
+            display: none;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+            transition: opacity 0.8s ease;
+            border-radius: 2px;
+        }
+
+        /* СТРАНИЦЫ */
+        img.page {
+            display: block;
+            width: 100%;
+            height: auto;
+            margin-bottom: 120px;
+            opacity: 0.55;
+            transition: opacity 0.5s ease;
+            cursor: pointer;
+        }
+
+        img.page:hover { opacity: 0.9; }
+        .cover { opacity: 1 !important; cursor: default !important; }
+
+        .dark-page {
+            filter: invert(1) hue-rotate(180deg) brightness(1.4) contrast(1.1);
+            mix-blend-mode: screen;
+        }
+        
+        .page-active { opacity: 1 !important; }
+
+        .progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 4px;
+            background: #fff;
+            z-index: 1000;
+            width: 0%;
+        }
+
+        /* КНОПКА ПРОДОЛЖИТЬ */
+        #continue-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            padding: 12px 20px;
+            background-color: rgba(255, 255, 255, 0.95);
+            color: #000;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            z-index: 2000;
+            display: none;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.6);
+            transition: opacity 0.5s, transform 0.2s;
+            text-align: left;
+        }
+
+        #continue-btn:hover { transform: translateY(-3px); background-color: #fff; }
+        .btn-label { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.6; margin-bottom: 4px; }
+        .btn-page-info { display: block; font-size: 16px; font-weight: bold; }
+
+        /* ТИТРЫ */
+        .credits {
+            text-align: center;
+            padding: 150px 20px 200px 20px;
+            line-height: 2;
+            letter-spacing: 2px;
+            z-index: 1;
+            width: 100%;
+            max-width: 850px;
+        }
+
+        .credits .role { font-size: 12px; color: #666; text-transform: uppercase; display: block; margin-top: 35px; }
+        .credits p { margin: 5px 0 0 0; font-size: 18px; color: #ddd; }
+    </style>
+</head>
+<body>
+
+    <div class="progress-bar" id="myBar"></div>
+    <div id="bg-1" class="bg-layer"></div>
+    <div id="bg-2" class="bg-layer"></div>
+    <div class="overlay"></div>
+
+    <div id="sync-notice">ПРОТОКОЛ: СИНХРОНИЗАЦИЯ ЗАВЕРШЕНА</div>
+    <div id="welcome-notice">
+        [ СЕАНС СВЯЗИ УСТАНОВЛЕН ]<br>
+        ПРОГРЕСС СОХРАНЯЕТСЯ АВТОМАТИЧЕСКИ.<br>
+        ВЕРНУТЬСЯ МОЖНО ИЗ ЛЮБОЙ ТОЧКИ МИНИ-НОВЕЛЛЫ.
+    </div>
+
+    <button id="continue-btn" onclick="resumeReading()">
+        <span class="btn-label" id="btn-chapter-name">Продолжить чтение</span>
+        <span class="btn-page-info" id="page-resume-info">Страница ...</span>
+    </button>
+
+    <div class="container" id="main-content"></div>
+
+    <div class="credits">
+        <div style="font-family: monospace; opacity: 0.4; margin-bottom: 40px; letter-spacing: 2px; font-size: 12px;">
+            КОНЕЦ ПРОТОКОЛА // ОБЪЕКТ «БАЙКАЛ» — 2098
+        </div>
+        
+        <span class="role">Архивные данные</span>
+        <p>Невольный свидетель</p>
+
+        <span class="role">Код</span>
+        <p>Gemini и невольный свидетель</p>
+
+        <span class="role">Визуальные воспоминания</span>
+        <p>ChatGPT и стоковые архивы</p>
+
+        <p style="margin-top: 70px; font-size: 17px; font-style: italic; opacity: 0.8; max-width: 450px; margin-left: auto; margin-right: auto; line-height: 1.6; font-weight: 300;">
+            "君の声を聴かせてよ ずっと" <br><br> 
+            "Дай мне услышать твой голос... Всегда." <br>
+            <span style="font-size: 14px; opacity: 0.7;">@ Sakanaction - Megaakuaiiro</span>
+        </p>
+
+        <div style="margin-top: 60px; color: #fff; letter-spacing: 5px; font-size: 18px; text-transform: uppercase; font-weight: bold;">
+            Мин харыстыы сылдьыам.
+        </div>
+    </div>
+
+    <script>
+        const totalPages = 114;
+        const container = document.getElementById('main-content');
+        const bgLayers = [document.getElementById('bg-1'), document.getElementById('bg-2')];
+        let currentLayerIndex = 0;
+        let lastBgFile = "";
+
+        // 1. Создание страниц (от 1.jpg до 114.jpg)
+        for (let i = 1; i <= totalPages; i++) {
+            const img = document.createElement('img');
+            img.src = i + '.jpg';
+            img.classList.add('page');
+            if (i === 1) {
+                img.classList.add('cover');
+            } else {
+                img.classList.add('dark-page');
+                img.onclick = function() { this.classList.toggle('page-active'); };
+            }
+            img.onerror = function() { this.style.display = 'none'; };
+            container.appendChild(img);
+        }
+
+        function showNotice(text) {
+            const n = document.getElementById('sync-notice');
+            if(text) n.innerText = text;
+            n.style.opacity = "1";
+            setTimeout(() => { n.style.opacity = "0"; }, 3500);
+        }
+
+        // 2. Логика обновлений состояния (скролл, фон, сохранения)
+        function updateState() {
+            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+            const docHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+            if (docHeight <= 0) return;
+
+            const scrolled = (scrollTop / docHeight) * 100;
+            document.getElementById("myBar").style.width = scrolled + "%";
+
+            // Текущая страница (1-114)
+            const p = Math.floor((scrollTop / (docHeight + 1)) * totalPages) + 1;
+
+            // Сохранение
+            if (scrollTop > 500 && scrolled < 98) {
+                localStorage.setItem('readerScrollPos', scrollTop);
+                localStorage.setItem('readerPageNum', p);
+            }
+
+            // Очистка памяти в конце
+            if (scrolled > 99) {
+                localStorage.removeItem('readerScrollPos');
+                localStorage.removeItem('readerPageNum');
+            }
+
+            // Прячем кнопку при активном чтении
+            if (scrollTop > 1000) {
+                const btn = document.getElementById('continue-btn');
+                btn.style.opacity = "0";
+                setTimeout(() => { btn.style.display = "none"; }, 500);
+            }
+
+            // ЛОГИКА ФОНОВ
+            let bgFile = "";
+            if (p >= 110) bgFile = "end.webp";
+            else if (p >= 105 && p <= 109) bgFile = "star.webp";
+            else if (p >= 101 && p <= 104) bgFile = "cloud.webp";
+            else if (p >= 99 && p <= 100) bgFile = "arbuz.webp";
+            else if (p >= 90 && p <= 98) bgFile = "star.webp";
+            else if (p >= 88 && p <= 89) bgFile = "fomaruka.webp";
+            else if (p >= 85 && p <= 87) bgFile = "zvezdi.webp";
+            else if (p >= 84) bgFile = "star.webp";
+            else if (p >= 80 && p <= 83) bgFile = "cloud.webp";
+            else if (p >= 78 && p <= 79) bgFile = "lampa.webp";
+            else if (p >= 75 && p <= 76) bgFile = "noch.webp";
+            else if (p >= 68 && p <= 74) bgFile = "cloud.webp";
+            else if (p >= 66 && p <= 67) bgFile = "cloud.webp";
+            else if (p >= 65 && p < 66) bgFile = "kafe.webp";
+            else if (p >= 64 && p < 65) bgFile = "varyaruka.webp";
+            else if (p >= 59 && p <= 63) bgFile = "kafe.webp";
+            else if (p >= 54 && p <= 58) bgFile = "gorod.webp";
+            else if (p >= 51 && p <= 53) bgFile = "cloud.webp";
+            else if (p >= 45 && p <= 47) bgFile = "obereg.webp";
+            else if (p >= 42 && p <= 43) bgFile = "svecha.webp";
+            else if (p >= 38 && p <= 39) bgFile = "kauta.webp";
+            else if (p >= 35 && p <= 37) bgFile = "nochnik.webp";
+            else if (p >= 26 && p <= 34) bgFile = "cloud.webp";
+            else if (p >= 20 && p <= 25) bgFile = "varya.webp";
+            else if (p >= 9 && p <= 12) bgFile = "komnata.png";
+            else if (p >= 5 && p <= 8) bgFile = "ocean.webp";
+
+            // Смена слоев фона
+            if (bgFile !== lastBgFile) {
+                const nextLayerIndex = 1 - currentLayerIndex;
+                if (bgFile) {
+                    bgLayers[nextLayerIndex].style.backgroundImage = `url('${bgFile}')`;
+                    bgLayers[nextLayerIndex].style.opacity = "0.8";
+                    bgLayers[currentLayerIndex].style.opacity = "0";
+                    currentLayerIndex = nextLayerIndex;
+                } else {
+                    bgLayers.forEach(l => l.style.opacity = "0");
+                }
+                lastBgFile = bgFile;
+            }
+        }
+
+        function resumeReading() {
+            const savedPos = localStorage.getItem('readerScrollPos');
+            if (savedPos) {
+                window.scrollTo({ top: parseInt(savedPos), behavior: 'smooth' });
+                document.getElementById('continue-btn').style.display = "none";
+            }
+        }
+
+        window.onload = function() {
+            const savedPos = localStorage.getItem('readerScrollPos');
+            const savedPage = localStorage.getItem('readerPageNum');
+
+            // Уведомление при первом входе
+            if (!localStorage.getItem('welcomeShown')) {
+                const welcome = document.getElementById('welcome-notice');
+                welcome.style.display = 'block';
+                setTimeout(() => { welcome.style.opacity = '1'; }, 100);
+                setTimeout(() => {
+                    welcome.style.opacity = '0';
+                    setTimeout(() => { welcome.style.display = 'none'; }, 800);
+                    localStorage.setItem('welcomeShown', 'true');
+                }, 8000);
+            }
+
+            // Настройка кнопки продолжения
+            if (savedPos && parseInt(savedPos) > 600) {
+                const p = parseInt(savedPage) || 1;
+                let phaseName = "Продолжить чтение";
+
+                if (p < 20) phaseName = "Этап: Незрелость";
+                else if (p >= 20 && p < 79) phaseName = "Этап: Взрослость";
+                else phaseName = "Этап: Зрелость";
+
+                document.getElementById('btn-chapter-name').textContent = phaseName;
+                document.getElementById('page-resume-info').textContent = "Страница " + p;
+                document.getElementById('continue-btn').style.display = "block";
+            }
+            updateState();
+        };
+
+        window.addEventListener('scroll', updateState, { passive: true });
+    </script>
+</body>
+</html>
