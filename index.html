@@ -163,7 +163,7 @@
             <div style="font-size: 20px; letter-spacing: 5px; text-transform: uppercase; margin-bottom: 60px; color: #555;">“Что вы услышите, когда мир вокруг замолкнет?”</div>
             <div id="choice_btns">
                 <a href="work.html" class="choice-link" onclick="saveVisit()">Разделить это одиночество</a>
-                <button class="choice-link" onclick="showGratitude()">Не надо.</button>
+                <button class="choice-link" onclick="showGratitude()">Не надо</button>
             </div>
             <div id="gratitude_msg" class="gratitude">“Спасибо, что разделили со мной время.”</div>
             <div class="credits-tag">
@@ -254,7 +254,7 @@
 
         function scene8_logic() {
             s8++; 
-            if(s8==1) document.getElementById('txt8').innerText = "Досадно, что плеер не был заряжен. Где мой зарядник?.. Ах, вот он. (вставляет)";
+            if(s8==1) document.getElementById('txt8').innerText = "Досадно, что плеер не был заряжен. Где мой зарядник?.. (вставляет провод)";
             else if(s8==2) {
                 document.getElementById('sc8_dialog').style.display='none';
                 document.getElementById('player_ui').style.display='flex';
