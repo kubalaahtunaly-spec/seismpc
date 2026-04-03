@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Сейсмограф воды // 2098</title>
+    <style>
+        /* Весь твой оригинальный CSS без изменений */
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; color: #fff; font-family: 'Courier New', Courier, monospace; overflow: hidden; }
+        .scene { display: none; width: 100%; height: 100vh; background-size: contain; background-repeat: no-repeat; background-position: center; flex-direction: column; justify-content: flex-end; align-items: center; position: relative; background-color: #000; }
+        .active { display: flex; }
+        
+        /* НОВАЯ КНОПКА ВОЗВРАТА */
+        #btn-return {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            padding: 10px 15px;
+            background: rgba(68, 255, 68, 0.05);
+            border: 1px solid rgba(68, 255, 68, 0.3);
+            color: #44ff44;
+            font-family: inherit;
+            font-size: 10px;
+            cursor: pointer;
+            z-index: 3000;
+            display: none;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: 0.3s;
+        }
+        #btn-return:hover { background: #44ff44; color: #000; box-shadow: 0 0 15px #44ff44; }
+
+        #eyelids { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; opacity: 0; z-index: 1000; pointer-events: none; transition: opacity 1.5s; }
+        .vignette { position: absolute; top: 0; left: 0; width: 100%; height: 100%; box-shadow: inset 0 0 150px rgba(0,0,0,1); pointer-events: none; z-index: 5; }
+        .crt-flicker { animation: flicker 0.15s infinite; pointer-events: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(18, 16, 16, 0.05); z-index: 25; }
+        @keyframes flicker { 0% { opacity: 0.27; } 5% { opacity: 0.35; } 10% { opacity: 0.24; } 15% { opacity: 0.4; } 20% { opacity: 0.22; } 25% { opacity: 0.35; } 50% { opacity: 0.22; } 100% { opacity: 0.29; } }
+        .dialog { background: rgba(0, 0, 0, 0.95); border-left: 3px solid #44ff44; padding: 25px; margin-bottom: 50px; width: 75%; cursor: pointer; z-index: 10; }
+        .name-foma { color: #44ff44; font-weight: bold; font-size: 14px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px; }
+        .name-varya { color: #88ccff; font-weight: bold; font-size: 14px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px; }
+        .unlock-container { position: absolute; top: 68%; left: 50%; transform: translate(-50%, -50%); z-index: 30; }
+        .btn-unlock { padding: 15px 40px; background: #44ff44; color: #000; border: none; cursor: pointer; font-weight: bold; letter-spacing: 2px; font-family: inherit; box-shadow: 0 0 20px rgba(68, 255, 68, 0.5); }
+        .tablet-ui { background: #050507; color: #e0e0e0; width: 90%; height: 85%; margin: auto; display: flex; flex-direction: column; border: 2px solid #44ff44; z-index: 20; position: relative; }
+        .news-header { background: #44ff44; padding: 12px 25px; color: #000; font-size: 12px; font-weight: bold; display: flex; justify-content: space-between; }
+        .news-list { padding: 25px; overflow-y: auto; flex-grow: 1; background: #0a0a0c; scrollbar-width: thin; scrollbar-color: #44ff44 #000; }
+        .news-item { margin-bottom: 25px; border-bottom: 1px dashed #222; padding-bottom: 20px; }
+        .news-q { font-weight: bold; color: #44ff44; font-size: 18px; cursor: pointer; display: block; margin-bottom: 12px; transition: 0.3s; }
+        .news-q:hover { text-shadow: 0 0 8px #44ff44; }
+        .news-a { display: none; font-size: 16px; color: #aaa; line-height: 1.7; padding: 15px 0; animation: fadeIn 0.8s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+        .player-body { background: linear-gradient(145deg, #151515, #050505); border: 4px solid #1a1a1a; border-radius: 15px; padding: 30px; width: 320px; box-shadow: 0 30px 60px rgba(0,0,0,1); display: flex; flex-direction: column; gap: 15px; margin-bottom: 120px; }
+        .player-screen { background: #000; border: 1px solid #222; height: 70px; display: flex; align-items: center; justify-content: center; color: #44ff44; font-size: 13px; text-shadow: 0 0 10px #44ff44; text-align: center; }
+        .btn-play-round { width: 70px; height: 70px; border-radius: 50%; background: radial-gradient(circle at 30% 30%, #222, #000); border: 2px solid #111; color: #333; font-size: 20px; cursor: pointer; margin: 10px auto 0 auto; transition: 0.3s; opacity: 0; pointer-events: none; }
+        .btn-play-round.ready { opacity: 1; pointer-events: auto; }
+        .btn-play-round:hover { color: #44ff44; text-shadow: 0 0 10px #44ff44; }
+        .battery-container { display: flex; align-items: center; gap: 4px; justify-content: center; margin-bottom: 5px; }
+        .battery-body { width: 40px; height: 18px; border: 2px solid #333; padding: 2px; display: flex; gap: 2px; position: relative; }
+        .battery-body::after { content: ''; position: absolute; right: -6px; top: 4px; width: 4px; height: 10px; background: #333; }
+        .charge-level { width: 8px; height: 100%; background: #44ff44; opacity: 0; }
+        .charging .charge-level { animation: chargeLoop 1.5s infinite; }
+        .charge-level:nth-child(2) { animation-delay: 0.2s; }
+        .charge-level:nth-child(3) { animation-delay: 0.4s; }
+        .charge-level:nth-child(4) { animation-delay: 0.6s; }
+        @keyframes chargeLoop { 0% { opacity: 0; } 50% { opacity: 1; } 100% { opacity: 0; } }
+        .charged .charge-level { opacity: 1 !important; animation: none !important; box-shadow: 0 0 5px #44ff44; }
+        .final-screen { opacity: 0; transition: opacity 3s; text-align: center; background: #000; width: 100%; height: 100%; position: absolute; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; }
+        .choice-link { display: block; background: none; border: none; color: #fff; font-family: inherit; font-size: 18px; margin: 20px; cursor: pointer; opacity: 0.5; transition: 1s; letter-spacing: 2px; text-decoration: none; }
+        .choice-link:hover { opacity: 1; letter-spacing: 5px; text-shadow: 0 0 15px #fff; }
+        .choice-link::after { content: ''; display: block; width: 0; height: 1px; background: #fff; margin: 8px auto; transition: 0.5s; }
+        .choice-link:hover::after { width: 100%; }
+        .gratitude { display: none; color: #88ccff; font-size: 24px; animation: glowFade 4s infinite alternate; letter-spacing: 3px; }
+        @keyframes glowFade { from { text-shadow: 0 0 5px #88ccff; opacity: 0.8; } to { text-shadow: 0 0 20px #88ccff; opacity: 1; } }
+        .credits-tag { position: absolute; bottom: 20px; right: 20px; text-align: right; font-size: 10px; color: #222; }
+        .ripple { position: absolute; border: 1px solid rgba(136, 204, 255, 0.4); border-radius: 50%; pointer-events: none; animation: ripple-ani 1.2s ease-out forwards; z-index: 99; }
+        @keyframes ripple-ani { from { width: 0; height: 0; opacity: 1; transform: translate(-50%, -50%); } to { width: 500px; height: 500px; opacity: 0; transform: translate(-50%, -50%); } }
+        .char { opacity: 0; transition: opacity 1.5s ease; display: inline-block; white-space: pre; }
+    </style>
+</head>
+<body onclick="spawnRipple(event)">
+
+    <button id="btn-return" onclick="window.location.href='work.html'">хотите вернуться к воспоминаниям?</button>
+
+    <div id="eyelids"></div>
+    <div class="vignette"></div>
+
+    <audio id="snd_gul" src="гул.mp3" loop></audio>
+    <audio id="snd_wash" src="уборка.mp3"></audio>
+    <audio id="snd_pleer" src="плеер.mp3"></audio>
+    <audio id="snd_voda" src="вода.mp3" loop crossorigin="anonymous"></audio>
+
+    <div id="sc1" class="scene active" style="background-image: url('планшет.webp');">
+        <div class="dialog" onclick="scene1_logic()">
+            <div class="name-foma">ФОМА</div><span id="txt1">Здесь так спокойно.</span>
+        </div>
+    </div>
+
+    <div id="sc2" class="scene" style="background-image: url('рука.webp'); justify-content: center;">
+        <div class="crt-flicker"></div>
+        <div class="unlock-container" id="cont_unlock">
+            <button class="btn-unlock" onclick="openTablet()">РАЗБЛОКИРОВАТЬ</button>
+        </div>
+        <div id="tablet" class="tablet-ui" style="display:none;">
+            <div class="news-header"><span>NETWORK ACCESS: TERMINAL_2098</span><span id="clock">00:00:00</span></div>
+            <div class="news-list">
+                <div class="news-item">
+                    <span class="news-q" onclick="toggleNews(this)">▸ О квотах на проект "Сейв"</span>
+                    <div class="news-a"><i>Каков реальный шанс получить место на корабле для гражданских лиц, не входящих в управленческую элиту?</i><br><br><b>Член профсоюза:</b> Знаете, я часто слышу этот вопрос, и в нем сквозит ненужная тревога. Важно понимать: проект "Сейв" - это не элитный клуб, это наш общий ковчег, надежда всей наших наций. Да, квоты распределяются строго, но это вопрос государственной безопасности. Приоритет отдается тем, кто обеспечивает работу наших систем.</div>
+                </div>
+                <div class="news-item">
+                    <span class="news-q" onclick="toggleNews(this)">▸ О самоповреждениях</span>
+                    <div class="news-a"><i>Чем объясняется критический рост селфхарма среди молодежи - это симптом потери будущего или форма тихого протеста?</i><br><br><b>Ведущий Психолог:</b> Послушайте, я бы не стал нагнетать. Мы, россияне, всегда отличались особым душевным складом, и то, что сейчас происходит на архипелагах, — это не "потеря будущего". Это процесс глубокой внутренней адаптации. Наш человек привык сопереживать окружающему миру, и когда природа меняется так радикально, молодые люди просто острее это чувствуют.</div>
+                </div>
+                <div class="news-item">
+                    <span class="news-q" onclick="toggleNews(this)">▸ О затоплении</span>
+                    <div class="news-a">Правда ли, что 95% поверхности Земли ушло под воду?<br><br><b>Эксперт-геолог:</b> Да. Это подтвержденные данные спутникового мониторинга. Все низменности и материковые плато затоплены. Суша сохранилась только в виде высокогорных систем (Гималаи, Анды, вершины Урала), превратившихся в архипелаги. Понятие "материк" окончательно упразднено.</div>
+                </div>
+                <div class="news-item">
+                    <span class="news-q" onclick="toggleNews(this)">▸ О радиации</span>
+                    <div class="news-a">Является ли использование защитных кремов реальной мерой безопасности?<br><br><b>Эксперт-физик:</b> С точки зрения биологической защиты — эффект крема близок к нулю. Солнечный спектр изменился, и бытовые фильтры не справляются с жестким излучением. Однако протокол обязывает использовать средства для предотвращения моментальных термических ожогов кожи и поддержания дисциплины в условиях аномальной солнечной активности. Это не лечение, а минимальный барьер.</div>
+                </div>
+                <div class="news-item">
+                    <span class="news-q" onclick="toggleNews(this)">▸ О искусственных облаках</span>
+                    <div class="news-a">Помогают ли облака на самом деле?<br><br><b>Эксперт-технолог:</b> Глобально проект провален. Облака не отражают радиацию, а создают «парниковый мешок», удерживая тепло у воды. Тем не менее, их продолжают распылять. Во-первых, это дает локальную тень над важными объектами, спасая людей от ослепления. Во-вторых, это политический инструмент: создание облаков - единственный видимый способ имитировать борьбу с катастрофой и поддерживать спокойствие среди населения.</div>
+                </div>
+            </div>
+            <button onclick="go(3)" style="padding:15px; background:#1a1a1f; color:#ff4444; border:none; cursor:pointer; font-weight:bold; letter-spacing:2px;">[ ОТКЛЮЧИТЬ ПИТАНИЕ ]</button>
+        </div>
+    </div>
+
+    <div id="sc3" class="scene" style="background-image: url('убрать.webp');"><div class="dialog" onclick="scene3_logic()"><div class="name-foma">ФОМА</div><span id="txt3">Как обычно...</span></div></div>
+    <div id="sc4" class="scene" style="background: #000;"><div style="margin:auto; color:#222; letter-spacing:10px;">УБОРКА...</div></div>
+    <div id="sc5" class="scene" style="background-image: url('гостевая.webp');"><div class="dialog" onclick="go(6)"><div class="name-foma">ФОМА</div>Надо будет напомнить Кузнецову про фильтры.</div></div>
+    <div id="sc6" class="scene" style="background-image: url('коридор.webp');"><div class="dialog" onclick="scene6_logic()"><div class="name-foma">ФОМА</div><span id="txt6">Уже полночь. Поскорее бы к себе... (находит в кармане mp3-плеер)</span></div></div>
+
+    <div id="sc7" class="scene" style="background-image: url('синий.webp');">
+        <div class="dialog" onclick="scene7_logic()" style="margin-bottom: 80px;">
+            <div id="v_name" class="name-varya">ВАРЯ</div><span id="v_txt">Почему всё ещё их носишь?..</span>
+        </div>
+    </div>
+
+    <div id="sc8" class="scene" style="background-color: #020205; justify-content: center;">
+        <div id="sc8_dialog" class="dialog" onclick="scene8_logic()" style="display:none; margin-top: auto;"><div class="name-foma">ФОМА</div><span id="txt8">В каюте так тихо.</span></div>
+        <div id="player_ui" class="player-body" style="display:none;">
+            <div class="battery-container">
+                <div id="battery" class="battery-body charging">
+                    <div class="charge-level"></div><div class="charge-level"></div><div class="charge-level"></div><div class="charge-level"></div>
+                </div>
+                <span id="charge_text" style="font-size: 10px; color: #44ff44; margin-left: 10px; font-weight: bold;">CHARGING...</span>
+            </div>
+            <div class="player-screen" id="screen_text">SYSTEM OFFLINE</div>
+            <button id="play_btn" class="btn-play-round" onclick="startFinalSequence()">▶</button>
+        </div>
+    </div>
+
+    <div id="sc9" class="scene" style="background-image: url('отражение.webp');">
+        <div id="final_box" class="dialog" onclick="fadeOutToQuestion()" style="margin: auto auto 100px auto; border-left-color: #88ccff;">
+            <div class="name-foma">ФОМА</div>
+            <div id="f_t" style="min-height: 20px; transition: opacity 2s;"></div>
+            <div id="yakut_wrap" style="margin-top:15px; min-height: 40px;"></div>
+            <div id="click_hint" style="display:none; color:#44ff44; font-size:10px; margin-top:20px; text-align:center; opacity:0; transition: 3s;">[ НАЖМИТЕ, ЧТОБЫ ЗАКОНЧИТЬ ]</div>
+        </div>
+
+        <div id="question_overlay" class="final-screen" style="display:none;">
+            <div style="font-size: 20px; letter-spacing: 5px; text-transform: uppercase; margin-bottom: 60px; color: #555;">“Что вы услышите, когда мир вокруг замолкнет?”</div>
+            <div id="choice_btns">
+                <a href="work.html" class="choice-link" onclick="saveVisit()">Разделить это одиночество</a>
+                <button class="choice-link" onclick="showGratitude()">Не надо.</button>
+            </div>
+            <div id="gratitude_msg" class="gratitude">“Спасибо, что разделили со мной время.”</div>
+            <div class="credits-tag">
+                2098 PROJECT // SEISMOGRAPH OF WATER <br>
+                STORY BY: <span class="glitch-author">[ДАННЫЕ НЕСТАБИЛЬНЫ]</span><br>
+                SYSTEM ARCHITECTURE: <span style="opacity:0.3">[ДАННЫЕ УДАЛЕНЫ]</span> & GEMINI (GOOGLE AI)<br>
+                MUSIC: SAKANACTION - DOCUMENT
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ЛОГИКА ПАМЯТИ
+        function saveVisit() {
+            localStorage.setItem('has_seen_ending', 'true');
+        }
+
+        window.onload = function() {
+            if (localStorage.getItem('has_seen_ending') === 'true') {
+                document.getElementById('btn-return').style.display = 'block';
+            }
+            // Проверка прогресса из work.html
+            const savedPage = localStorage.getItem('readerPageNum');
+            if (savedPage && localStorage.getItem('has_seen_ending') === 'true') {
+                document.getElementById('btn-return').innerText = "вернуться к воспоминаниям? (стр. " + savedPage + ")";
+            }
+        };
+
+        // ВЕСЬ ОСТАЛЬНОЙ СКРИПТ БЕЗ ИЗМЕНЕНИЙ
+        let s1=0, s3=0, s6=0, s7=0, s8=0, canClickFinal = false;
+        const eyelids = document.getElementById('eyelids');
+        const gul = document.getElementById('snd_gul');
+        const voda = document.getElementById('snd_voda');
+
+        let audioCtx, source, filter;
+        function initVacuum() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                source = audioCtx.createMediaElementSource(voda);
+                filter = audioCtx.createBiquadFilter();
+                filter.type = "lowpass"; filter.frequency.value = 450;
+                source.connect(filter); filter.connect(audioCtx.destination);
+            }
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        }
+
+        function go(n) { document.querySelectorAll('.scene').forEach(s => s.classList.remove('active')); document.getElementById('sc' + n).classList.add('active'); }
+
+        function scene1_logic() {
+            s1++; const t = document.getElementById('txt1');
+            if(s1==1) { gul.play(); t.innerText = "Видимо... корабль планировался как гражданский."; }
+            else if(s1==2) t.innerText = "Сегодня командир совсем рано заснул. Заболел?";
+            else if(s1==3) t.innerText = "(замечает на диване дешёвый планшет)";
+            else if(s1==4) t.innerText = "Интересно, что-нибудь изменилось?";
+            else if(s1==5) go(2);
+        }
+
+        function openTablet() { document.getElementById('cont_unlock').style.display='none'; document.getElementById('tablet').style.display='flex'; }
+        function toggleNews(el) { const a = el.nextElementSibling; const isVisible = a.style.display === 'block'; document.querySelectorAll('.news-a').forEach(item => item.style.display = 'none'); a.style.display = isVisible ? 'none' : 'block'; }
+
+        function scene3_logic() {
+            s3++; const t = document.getElementById('txt3');
+            if(s3==1) t.innerText = "Ладно. Пора заканчивать смену.";
+            else if(s3==2) { document.getElementById('snd_wash').play(); go(4); setTimeout(() => go(5), 5000); }
+        }
+
+        function scene6_logic() {
+            s6++; if(s6==1) document.getElementById('txt6').innerText = "(собирается надеть наушники-капли)";
+            else if(s6==2) { eyelids.style.opacity = "1"; setTimeout(() => { gul.pause(); initVacuum(); voda.play(); go(7); eyelids.style.opacity = "0"; }, 1500); }
+        }
+
+        function scene7_logic() {
+            s7++; const t = document.getElementById('v_txt'); const n = document.getElementById('v_name');
+            const lines = [
+                {n:"ВАРЯ", t:"Ты не обязан их слушать."}, {n:"ФОМА", t:"Честно, не знаю..."},
+                {n:"ФОМА", t:"Но мне так намного спокойнее."}, {n:"ВАРЯ", t:"..."},
+                {n:"ВАРЯ", t:"Это из-за меня?.."}, {n:"ФОМА", t:"Нет. Не из-за тебя."},
+                {n:"ВАРЯ", t:"Прости меня."}, {n:"ФОМА", t:"Тебе не за что извиняться."},
+                {n:"ВАРЯ", t:"Ты совсем не изменился."}, {n:"ФОМА", t:"Как и ты. (чуть усмехнулся)"},
+                {n:"ВАРЯ", t:"А что с... Линой? Как она?"}, {n:"ФОМА", t:"С ней всё хорошо. Живёт у моих родителей."},
+                {n:"ВАРЯ", t:"..."}, {n:"ФОМА", t:"Знаешь? Она... прям твоя копия."},
+                {n:"ВАРЯ", t:"Только не это. (слабо смеётся)"}, {n:"ФОМА", t:"Что ты?.. (смеётся в ответ)"}
+            ];
+            if(s7 <= lines.length) {
+                const s = lines[s7-1]; n.innerText = s.n; n.className = (s.n=="ФОМА"?"name-foma":"name-varya"); t.innerText = s.t;
+            } else { voda.pause(); gul.play(); eyelids.style.opacity = "1"; setTimeout(() => { go(8); eyelids.style.opacity = "0"; document.getElementById('sc8_dialog').style.display='block'; }, 1500); }
+        }
+
+        function scene8_logic() {
+            s8++; 
+            if(s8==1) document.getElementById('txt8').innerText = "Досадно, что плеер не был заряжен. Где мой зарядник?.. Ах, вот он. (вставляет)";
+            else if(s8==2) {
+                document.getElementById('sc8_dialog').style.display='none';
+                document.getElementById('player_ui').style.display='flex';
+                setTimeout(() => {
+                    document.getElementById('battery').className = 'battery-body charged';
+                    document.getElementById('charge_text').innerText = 'POWER: 100%';
+                    document.getElementById('screen_text').innerHTML = 'SYSTEM READY<br>SAKANACTION - DOCUMENT';
+                    document.getElementById('play_btn').classList.add('ready');
+                }, 4000);
+            }
+        }
+
+        function startFinalSequence() {
+            document.getElementById('play_btn').disabled = true; document.getElementById('snd_pleer').play();
+            setTimeout(() => { eyelids.style.opacity = "1"; setTimeout(() => { go(9); eyelids.style.opacity = "0"; startFinalText(); }, 1500); }, 3000);
+        }
+
+        async function typeSmooth(containerId, text, speed = 80) {
+            const container = document.getElementById(containerId);
+            for (let char of text) {
+                const span = document.createElement('span');
+                span.className = 'char';
+                span.textContent = char;
+                container.appendChild(span);
+                await new Promise(r => setTimeout(r, 20)); 
+                span.style.opacity = "1";
+                await new Promise(r => setTimeout(r, speed));
+            }
+        }
+
+        async function startFinalText() {
+            const f_t = document.getElementById('f_t');
+            const yakutWrap = document.getElementById('yakut_wrap');
+            await new Promise(res => setTimeout(res, 2500));
+            await typeSmooth('f_t', "О чём же ты думала, слушая эту песню?..", 70);
+            await new Promise(res => setTimeout(res, 3500));
+            f_t.style.opacity = "0";
+            await new Promise(res => setTimeout(res, 3000));
+            const y_main = document.createElement('div');
+            y_main.id = 'y_main';
+            y_main.style.color = '#88ccff';
+            y_main.style.fontStyle = 'italic';
+            yakutWrap.appendChild(y_main);
+            await typeSmooth('y_main', "Океан иhэ син биир космос курдук эбит.", 90);
+            await new Promise(res => setTimeout(res, 1500));
+            const y_sub = document.createElement('div');
+            y_sub.innerHTML = '<small style="color:#444; font-style: normal; opacity: 0; transition: 4s;">[А океан ничем от космоса не отличается.]</small>';
+            yakutWrap.appendChild(y_sub);
+            setTimeout(() => { y_sub.querySelector('small').style.opacity = "1"; }, 100);
+            setTimeout(() => {
+                const hint = document.getElementById('click_hint');
+                hint.style.display = "block";
+                setTimeout(() => { hint.style.opacity = "0.4"; }, 100);
+                canClickFinal = true;
+            }, 5000);
+        }
+
+        function fadeOutToQuestion() {
+            if (!canClickFinal) return;
+            document.getElementById('final_box').style.opacity = "0"; document.getElementById('sc9').style.backgroundImage = "none";
+            document.getElementById('sc9').style.backgroundColor = "#000";
+            setTimeout(() => { document.getElementById('final_box').style.display = "none"; document.getElementById('question_overlay').style.display = "flex"; setTimeout(() => { document.getElementById('question_overlay').style.opacity = "1"; }, 100); }, 3000);
+        }
+
+        function showGratitude() { document.getElementById('choice_btns').style.display="none"; document.getElementById('gratitude_msg').style.display="block"; }
+        function spawnRipple(e) { if (document.getElementById('sc7').classList.contains('active')) { const r = document.createElement('div'); r.className = 'ripple'; r.style.left = e.clientX + 'px'; r.style.top = e.clientY + 'px'; document.body.appendChild(r); setTimeout(() => r.remove(), 1200); } }
+        setInterval(() => { const c = document.getElementById('clock'); if(c) c.innerText = new Date().toLocaleTimeString(); }, 1000);
+    </script>
+</body>
+
+</html>
+
+
