@@ -6,12 +6,12 @@
     <title>Сейсмограф воды // 2098</title>
     <link rel="icon" href="favicon.ico" type="image/x-icon">
     <style>
-        /* Весь твой оригинальный CSS без изменений */
+
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; color: #fff; font-family: 'Courier New', Courier, monospace; overflow: hidden; }
         .scene { display: none; width: 100%; height: 100vh; background-size: contain; background-repeat: no-repeat; background-position: center; flex-direction: column; justify-content: flex-end; align-items: center; position: relative; background-color: #000; }
         .active { display: flex; }
         
-        /* НОВАЯ КНОПКА ВОЗВРАТА */
+
         #btn-return {
             position: fixed;
             top: 20px;
@@ -177,7 +177,7 @@
     </div>
 
     <script>
-        // ЛОГИКА ПАМЯТИ
+
         function saveVisit() {
             localStorage.setItem('has_seen_ending', 'true');
         }
@@ -186,14 +186,14 @@
             if (localStorage.getItem('has_seen_ending') === 'true') {
                 document.getElementById('btn-return').style.display = 'block';
             }
-            // Проверка прогресса из work.html
+
             const savedPage = localStorage.getItem('readerPageNum');
             if (savedPage && localStorage.getItem('has_seen_ending') === 'true') {
                 document.getElementById('btn-return').innerText = "вернуться к воспоминаниям? (стр. " + savedPage + ")";
             }
         };
 
-        // ВЕСЬ ОСТАЛЬНОЙ СКРИПТ БЕЗ ИЗМЕНЕНИЙ
+
         let s1=0, s3=0, s6=0, s7=0, s8=0, canClickFinal = false;
         const eyelids = document.getElementById('eyelids');
         const gul = document.getElementById('snd_gul');
