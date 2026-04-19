@@ -20,7 +20,6 @@
             overflow-x: hidden;
         }
 
-        /* --- ПРЕЛОАДЕР ТЕРМИНАЛА --- */
         #memory-loader {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: #000; color: var(--terminal-green); z-index: 30000;
@@ -49,7 +48,6 @@
         }
         #init-btn:hover { background: var(--terminal-green); color: #000; }
 
-        /* --- ОСНОВНОЙ КОНТЕНТ --- */
         #main-wrapper { width: 100%; display: none; opacity: 0; transition: opacity 1.5s ease; flex-direction: column; align-items: center; }
 
         .bg-layer {
@@ -149,8 +147,6 @@
         const bgLayers = [document.getElementById('bg-1'), document.getElementById('bg-2')];
         let currentLayerIndex = 0;
         let lastBgFile = "";
-
-        // --- ЛОГИКА ТЕРМИНАЛА ---
         const logs = [
             { t: "ПОДКЛЮЧЕНИЕ К АРХИВАМ ОБЪЕКТА 'БАЙКАЛ'...", type: "system" },
             { t: "Синхронизация потоков данных...", type: "line" },
@@ -209,7 +205,6 @@
             }, 1000);
         }
 
-        // --- СОЗДАНИЕ СТРАНИЦ ---
         for (let i = 1; i <= totalPages; i++) {
             const img = document.createElement('img');
             img.src = i + '.jpg'; 
@@ -241,13 +236,11 @@
                 localStorage.removeItem('readerPageNum');
             }
 
-            // Прячем кнопку продолжения при глубоком скролле
             if (scrollTop > 1000) {
                 document.getElementById('continue-btn').style.opacity = "0";
                 setTimeout(() => { document.getElementById('continue-btn').style.display = "none"; }, 500);
             }
 
-            // ЛОГИКА ФОНОВ
             let bgFile = "";
             if (p >= 110) bgFile = "end.webp";
             else if (p >= 105 && p <= 109) bgFile = "star.webp";
@@ -305,7 +298,6 @@
                 const p = parseInt(savedPage) || 1;
                 let phaseName = "Продолжить чтение";
                 
-                // Твои настройки этапов
                 if (p < 20) phaseName = "Этап: Незрелость";
                 else if (p >= 20 && p < 79) phaseName = "Этап: Взрослость";
                 else phaseName = "Этап: Зрелость";
